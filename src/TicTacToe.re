@@ -31,7 +31,11 @@ let playerToString(currentPlayer: player): string =
     | O => "O"
   };
 
-let renderSquare(square: option(player)) => square: 
+let renderSquare(square: option(player)): string =
+  switch (square) {
+    | None => "None"
+    | Some(player) => playerToString(player)
+
 
 /* Component template declaration.
    Needs to be **after** state and action declarations! */
@@ -60,9 +64,8 @@ let make = (~greeting, _children) => {
       "It's " ++ playerToString(self.state.turn) ++ "'s turn";
     <div>
       <h1>(ReasonReact.string(greeting))</h1>
-      <h1>testss</h1>
       <h2>(ReasonReact.string(message))</h2>
-      (ArrayLabels.map(renderSquare, self.state.board.map)
+      (ArrayLabels.map(square => <div>(renderSquare(square))</div>, self.state.board.map)
       <button onClick=(_event => self.send(Click(0)))>
         (ReasonReact.string(message))
       </button>
