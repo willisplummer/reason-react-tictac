@@ -31,16 +31,28 @@ function playerToString(currentPlayer) {
   }
 }
 
-function renderSquare(square) {
-  if (square !== undefined) {
-    if (square) {
-      return "O";
-    } else {
-      return "X";
-    }
-  } else {
-    return "None";
-  }
+function id(i, a) {
+  return /* tuple */[
+          i,
+          a
+        ];
+}
+
+function zipWithIndices(arr) {
+  return ArrayLabels.mapi(id, arr);
+}
+
+function arrToMatrix(arr) {
+  var init = ArrayLabels.make_matrix(3, 3, undefined);
+  var zipped = ArrayLabels.mapi(id, arr);
+  var f = function (acc, zippedVal) {
+    var index = zippedVal[0];
+    var x = index % 3;
+    var y = index / 3 | 0;
+    Caml_array.caml_array_set(Caml_array.caml_array_get(acc, x), y, zippedVal[1]);
+    return acc;
+  };
+  return ArrayLabels.fold_left(f, init, zipped);
 }
 
 var component = ReasonReact.reducerComponent("Example");
@@ -60,10 +72,28 @@ function make(greeting, _) {
               var message = "It's " + ((
                   self[/* state */1][/* turn */0] ? "O" : "X"
                 ) + "'s turn");
-              var squares = ArrayLabels.map((function (square) {
-                      return React.createElement("li", undefined, renderSquare(square));
-                    }), self[/* state */1][/* board */1]);
-              return React.createElement("div", undefined, React.createElement("h1", undefined, greeting), React.createElement("h2", undefined, message), React.createElement("ul", undefined, squares), React.createElement("button", {
+              var renderSquare = function (square, index) {
+                if (square !== undefined) {
+                  return React.createElement("span", undefined, square ? "O" : "X");
+                } else {
+                  return React.createElement("button", {
+                              onClick: (function () {
+                                  return Curry._1(self[/* send */3], /* Click */[index]);
+                                })
+                            }, "Select");
+                }
+              };
+              var matrix = arrToMatrix(self[/* state */1][/* board */1]);
+              var rows = ArrayLabels.mapi((function (i, row) {
+                      return React.createElement("div", {
+                                  key: "row-key-" + String(i)
+                                }, React.createElement("div", undefined, ArrayLabels.mapi((function (i, square) {
+                                            return React.createElement("span", {
+                                                        key: "square-key-" + String(i)
+                                                      }, renderSquare(square, i));
+                                          }), row)));
+                    }), matrix);
+              return React.createElement("div", undefined, React.createElement("h1", undefined, greeting), React.createElement("h2", undefined, message), React.createElement("div", undefined, rows), React.createElement("button", {
                               onClick: (function () {
                                   return Curry._1(self[/* send */3], /* Click */[0]);
                                 })
@@ -91,7 +121,9 @@ exports.initialBoard = initialBoard;
 exports.updateBoard = updateBoard;
 exports.switchPlayer = switchPlayer;
 exports.playerToString = playerToString;
-exports.renderSquare = renderSquare;
+exports.id = id;
+exports.zipWithIndices = zipWithIndices;
+exports.arrToMatrix = arrToMatrix;
 exports.component = component;
 exports.make = make;
 /* component Not a pure module */

@@ -1,6 +1,8 @@
 type player = X | O;
 
-type gameBoard = array(option(player));
+type square = option(player);
+
+type gameBoard = array(square);
 
 /* State declaration */
 type state = {
@@ -31,11 +33,22 @@ let playerToString(currentPlayer: player): string =
     | O => "O"
   };
 
-let renderSquare(square: option(player)): string =
-  switch (square) {
-    | None => "None"
-    | Some(player) => playerToString(player)
+let id(i, a) = (i, a);
+
+let zipWithIndices(arr: array('a)): array((int, 'a)) = ArrayLabels.mapi(~f=id, arr);
+
+let arrToMatrix = (arr: array(square)): array(array(square)) => {
+  let init: array(array(square)) = ArrayLabels.make_matrix(3, 3, None);
+  let zipped : array((int, 'a)) = zipWithIndices(arr);
+  let f = (acc, zippedVal): array(array('a)) => {
+    let (index, a) = zippedVal;
+    let x = index mod 3;
+    let y = index / 3;
+    acc[x][y] = a;
+    acc
   };
+  ArrayLabels.fold_left(~f=f, ~init=init, zipped)
+};
 
 /* Component template declaration.
    Needs to be **after** state and action declarations! */
@@ -62,12 +75,33 @@ let make = (~greeting, _children) => {
   render: self => {
     let message =
       "It's " ++ playerToString(self.state.turn) ++ "'s turn";
-    let squares =
-      ArrayLabels.map(square => <li>(ReasonReact.string(renderSquare(square)))</li>, self.state.board);
+    let renderSquare(square: square, index: int): ReasonReact.reactElement =
+      switch (square) {
+        | None =>
+          <button onClick=(_event => self.send(Click(index)))>
+            (ReasonReact.string("Select"))
+          </button>
+        | Some(player) => <span>(ReasonReact.string(playerToString(player)))</span>
+      };
+    let matrix = arrToMatrix(self.state.board);
+    let rows = ArrayLabels.mapi(
+      (i, row) =>
+        <div key=("row-key-" ++ string_of_int(i))>
+          <div>
+            (ReasonReact.array(
+              ArrayLabels.mapi(
+                (i, square) => <span key=("square-key-" ++ string_of_int(i))>(renderSquare(square, i))</span>,
+                row
+              )
+            ))
+          </div>
+        </div>,
+        matrix
+    );
     <div>
       <h1>(ReasonReact.string(greeting))</h1>
       <h2>(ReasonReact.string(message))</h2>
-      <ul>(ReasonReact.array(squares))</ul>
+      <div>(ReasonReact.array(rows ))</div>
       <button onClick=(_event => self.send(Click(0)))>
         (ReasonReact.string(message))
       </button>
