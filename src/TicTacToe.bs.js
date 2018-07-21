@@ -5,10 +5,144 @@ var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var React = require("react");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
+var ListLabels = require("bs-platform/lib/js/listLabels.js");
 var ArrayLabels = require("bs-platform/lib/js/arrayLabels.js");
 var ReasonReact = require("reason-react/src/ReasonReact.js");
 
 var initialBoard = Caml_array.caml_make_vect(9, undefined);
+
+function isNone(opt) {
+  return opt === undefined;
+}
+
+function isSome(opt) {
+  return !isNone(opt);
+}
+
+var winningCombos = /* :: */[
+  /* :: */[
+    0,
+    /* :: */[
+      1,
+      /* :: */[
+        2,
+        /* [] */0
+      ]
+    ]
+  ],
+  /* :: */[
+    /* :: */[
+      3,
+      /* :: */[
+        4,
+        /* :: */[
+          5,
+          /* [] */0
+        ]
+      ]
+    ],
+    /* :: */[
+      /* :: */[
+        6,
+        /* :: */[
+          7,
+          /* :: */[
+            8,
+            /* [] */0
+          ]
+        ]
+      ],
+      /* :: */[
+        /* :: */[
+          0,
+          /* :: */[
+            3,
+            /* :: */[
+              6,
+              /* [] */0
+            ]
+          ]
+        ],
+        /* :: */[
+          /* :: */[
+            1,
+            /* :: */[
+              4,
+              /* :: */[
+                7,
+                /* [] */0
+              ]
+            ]
+          ],
+          /* :: */[
+            /* :: */[
+              2,
+              /* :: */[
+                5,
+                /* :: */[
+                  8,
+                  /* [] */0
+                ]
+              ]
+            ],
+            /* :: */[
+              /* :: */[
+                0,
+                /* :: */[
+                  4,
+                  /* :: */[
+                    8,
+                    /* [] */0
+                  ]
+                ]
+              ],
+              /* :: */[
+                /* :: */[
+                  2,
+                  /* :: */[
+                    4,
+                    /* :: */[
+                      6,
+                      /* [] */0
+                    ]
+                  ]
+                ],
+                /* [] */0
+              ]
+            ]
+          ]
+        ]
+      ]
+    ]
+  ]
+];
+
+function isAWinner(list) {
+  return ListLabels.fold_left((function (init, b) {
+                var match = init === b;
+                if (match) {
+                  return init;
+                }
+                
+              }), ListLabels.hd(list), list);
+}
+
+function updateWinner(currentBoard) {
+  var results = ListLabels.map((function (combo) {
+          return ListLabels.map((function (i) {
+                        return Caml_array.caml_array_get(currentBoard, i);
+                      }), combo);
+        }), winningCombos);
+  var filtered = ListLabels.filter((function (vals) {
+            return !ListLabels.exists(isNone, vals);
+          }))(results);
+  var winners = ListLabels.filter(isSome)(ListLabels.map(isAWinner, filtered));
+  var match = ListLabels.length(winners) > 0;
+  if (match) {
+    return ListLabels.hd(winners);
+  }
+  
+}
 
 function updateBoard(currentBoard, player, squareIndex) {
   Caml_array.caml_array_set(currentBoard, squareIndex, player);
@@ -80,13 +214,18 @@ function make(greeting, _) {
                   return React.createElement("span", undefined, square ? "O" : "X");
                 } else {
                   return React.createElement("button", {
+                              disabled: !isNone(self[/* state */1][/* winner */1]),
                               onClick: (function () {
                                   return Curry._1(self[/* send */3], /* Click */[index]);
                                 })
                             }, "Select");
                 }
               };
-              var matrix = arrToMatrix(self[/* state */1][/* board */1]);
+              var matrix = arrToMatrix(self[/* state */1][/* board */2]);
+              var match = self[/* state */1][/* winner */1];
+              var winnerMessage = match !== undefined ? (
+                  match ? "O" : "X"
+                ) + " wins!" : "Keep playing!";
               var rows = ArrayLabels.mapi((function (i, row) {
                       return React.createElement("div", {
                                   key: "row-key-" + String(i)
@@ -97,21 +236,26 @@ function make(greeting, _) {
                                                       }, renderSquare(param[1], i));
                                           }), row)));
                     }), matrix);
-              return React.createElement("div", undefined, React.createElement("h1", undefined, greeting), React.createElement("h2", undefined, message), React.createElement("div", undefined, rows));
+              return React.createElement("div", undefined, React.createElement("h1", undefined, greeting), React.createElement("h2", undefined, message), React.createElement("div", undefined, rows), React.createElement("div", undefined, winnerMessage));
             }),
           /* initialState */(function () {
               return /* record */[
                       /* turn : X */0,
+                      /* winner */undefined,
                       /* board */initialBoard
                     ];
             }),
           /* retainedProps */component[/* retainedProps */11],
           /* reducer */(function (action, state) {
-              console.log(state);
-              return /* Update */Block.__(0, [/* record */[
-                          /* turn */state[/* turn */0] ? /* X */0 : /* O */1,
-                          /* board */updateBoard(state[/* board */1], state[/* turn */0], action[0])
-                        ]]);
+              var newBoard = updateBoard(state[/* board */2], state[/* turn */0], action[0]);
+              var newState_000 = /* turn */state[/* turn */0] ? /* X */0 : /* O */1;
+              var newState_001 = /* winner */updateWinner(newBoard);
+              var newState = /* record */[
+                newState_000,
+                newState_001,
+                /* board */newBoard
+              ];
+              return /* Update */Block.__(0, [newState]);
             }),
           /* subscriptions */component[/* subscriptions */13],
           /* jsElementWrapped */component[/* jsElementWrapped */14]
@@ -119,6 +263,11 @@ function make(greeting, _) {
 }
 
 exports.initialBoard = initialBoard;
+exports.isNone = isNone;
+exports.isSome = isSome;
+exports.winningCombos = winningCombos;
+exports.isAWinner = isAWinner;
+exports.updateWinner = updateWinner;
 exports.updateBoard = updateBoard;
 exports.switchPlayer = switchPlayer;
 exports.playerToString = playerToString;
