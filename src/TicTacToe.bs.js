@@ -5,18 +5,10 @@ var Block = require("bs-platform/lib/js/block.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var React = require("react");
 var Caml_array = require("bs-platform/lib/js/caml_array.js");
+var ArrayLabels = require("bs-platform/lib/js/arrayLabels.js");
 var ReasonReact = require("reason-react/src/ReasonReact.js");
 
-var initialBoard = /* array */[
-  undefined,
-  undefined,
-  undefined,
-  undefined,
-  undefined,
-  undefined,
-  undefined,
-  undefined
-];
+var initialBoard = Caml_array.caml_make_vect(9, undefined);
 
 function updateBoard(currentBoard, player, squareIndex) {
   Caml_array.caml_array_set(currentBoard, squareIndex, player);
@@ -39,6 +31,18 @@ function playerToString(currentPlayer) {
   }
 }
 
+function renderSquare(square) {
+  if (square !== undefined) {
+    if (square) {
+      return "O";
+    } else {
+      return "X";
+    }
+  } else {
+    return "None";
+  }
+}
+
 var component = ReasonReact.reducerComponent("Example");
 
 function make(greeting, _) {
@@ -56,7 +60,10 @@ function make(greeting, _) {
               var message = "It's " + ((
                   self[/* state */1][/* turn */0] ? "O" : "X"
                 ) + "'s turn");
-              return React.createElement("div", undefined, React.createElement("h1", undefined, greeting), React.createElement("h2", undefined, message), React.createElement("button", {
+              var squares = ArrayLabels.map((function (square) {
+                      return React.createElement("li", undefined, renderSquare(square));
+                    }), self[/* state */1][/* board */1]);
+              return React.createElement("div", undefined, React.createElement("h1", undefined, greeting), React.createElement("h2", undefined, message), React.createElement("ul", undefined, squares), React.createElement("button", {
                               onClick: (function () {
                                   return Curry._1(self[/* send */3], /* Click */[0]);
                                 })
@@ -84,6 +91,7 @@ exports.initialBoard = initialBoard;
 exports.updateBoard = updateBoard;
 exports.switchPlayer = switchPlayer;
 exports.playerToString = playerToString;
+exports.renderSquare = renderSquare;
 exports.component = component;
 exports.make = make;
 /* component Not a pure module */

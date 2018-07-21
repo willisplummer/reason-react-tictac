@@ -35,7 +35,7 @@ let renderSquare(square: option(player)): string =
   switch (square) {
     | None => "None"
     | Some(player) => playerToString(player)
-
+  };
 
 /* Component template declaration.
    Needs to be **after** state and action declarations! */
@@ -62,10 +62,12 @@ let make = (~greeting, _children) => {
   render: self => {
     let message =
       "It's " ++ playerToString(self.state.turn) ++ "'s turn";
+    let squares =
+      ArrayLabels.map(square => <li>(ReasonReact.string(renderSquare(square)))</li>, self.state.board);
     <div>
       <h1>(ReasonReact.string(greeting))</h1>
       <h2>(ReasonReact.string(message))</h2>
-      (ArrayLabels.map(square => <div>(renderSquare(square))</div>, self.state.board.map)
+      <ul>(ReasonReact.array(squares))</ul>
       <button onClick=(_event => self.send(Click(0)))>
         (ReasonReact.string(message))
       </button>
