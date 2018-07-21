@@ -43,13 +43,16 @@ function zipWithIndices(arr) {
 }
 
 function arrToMatrix(arr) {
-  var init = ArrayLabels.make_matrix(3, 3, undefined);
+  var init = ArrayLabels.make_matrix(3, 3, /* tuple */[
+        0,
+        undefined
+      ]);
   var zipped = ArrayLabels.mapi(id, arr);
   var f = function (acc, zippedVal) {
     var index = zippedVal[0];
     var x = index % 3;
     var y = index / 3 | 0;
-    Caml_array.caml_array_set(Caml_array.caml_array_get(acc, x), y, zippedVal[1]);
+    Caml_array.caml_array_set(Caml_array.caml_array_get(acc, x), y, zippedVal);
     return acc;
   };
   return ArrayLabels.fold_left(f, init, zipped);
@@ -87,17 +90,14 @@ function make(greeting, _) {
               var rows = ArrayLabels.mapi((function (i, row) {
                       return React.createElement("div", {
                                   key: "row-key-" + String(i)
-                                }, React.createElement("div", undefined, ArrayLabels.mapi((function (i, square) {
+                                }, React.createElement("div", undefined, ArrayLabels.map((function (param) {
+                                            var i = param[0];
                                             return React.createElement("span", {
                                                         key: "square-key-" + String(i)
-                                                      }, renderSquare(square, i));
+                                                      }, renderSquare(param[1], i));
                                           }), row)));
                     }), matrix);
-              return React.createElement("div", undefined, React.createElement("h1", undefined, greeting), React.createElement("h2", undefined, message), React.createElement("div", undefined, rows), React.createElement("button", {
-                              onClick: (function () {
-                                  return Curry._1(self[/* send */3], /* Click */[0]);
-                                })
-                            }, message));
+              return React.createElement("div", undefined, React.createElement("h1", undefined, greeting), React.createElement("h2", undefined, message), React.createElement("div", undefined, rows));
             }),
           /* initialState */(function () {
               return /* record */[
@@ -107,6 +107,7 @@ function make(greeting, _) {
             }),
           /* retainedProps */component[/* retainedProps */11],
           /* reducer */(function (action, state) {
+              console.log(state);
               return /* Update */Block.__(0, [/* record */[
                           /* turn */state[/* turn */0] ? /* X */0 : /* O */1,
                           /* board */updateBoard(state[/* board */1], state[/* turn */0], action[0])

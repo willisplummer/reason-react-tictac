@@ -37,14 +37,14 @@ let id(i, a) = (i, a);
 
 let zipWithIndices(arr: array('a)): array((int, 'a)) = ArrayLabels.mapi(~f=id, arr);
 
-let arrToMatrix = (arr: array(square)): array(array(square)) => {
-  let init: array(array(square)) = ArrayLabels.make_matrix(~dimx=3, ~dimy=3, None);
+let arrToMatrix = (arr: array(square)): array(array((int, 'a))) => {
+  let init: array(array((int, 'a))) = ArrayLabels.make_matrix(~dimx=3, ~dimy=3, (0, None));
   let zipped : array((int, 'a)) = zipWithIndices(arr);
-  let f = (acc, zippedVal): array(array('a)) => {
+  let f = (acc, zippedVal): array(array((int, 'a))) => {
     let (index, a) = zippedVal;
     let x = index mod 3;
     let y = index / 3;
-    acc[x][y] = a;
+    acc[x][y] = zippedVal;
     acc
   };
   ArrayLabels.fold_left(~f=f, ~init=init, zipped)
@@ -66,10 +66,14 @@ let make = (~greeting, _children) => {
   /* State transitions */
   reducer: (action, state) =>
     switch (action) {
-    | Click(squareIndex) => ReasonReact.Update({
-      board: updateBoard(state.board, state.turn, squareIndex),
-      turn: switchPlayer(state.turn)
-    })
+    | Click(squareIndex) => {
+      Js.log(state);
+
+      ReasonReact.Update({
+        board: updateBoard(state.board, state.turn, squareIndex),
+        turn: switchPlayer(state.turn)
+      })
+    }
   },
 
   render: self => {
@@ -89,8 +93,8 @@ let make = (~greeting, _children) => {
         <div key=("row-key-" ++ string_of_int(i))>
           <div>
             (ReasonReact.array(
-              ArrayLabels.mapi(
-                ~f=(i, square) => <span key=("square-key-" ++ string_of_int(i))>(renderSquare(square, i))</span>,
+              ArrayLabels.map(
+                ~f=((i: int, square: square)) => <span key=("square-key-" ++ string_of_int(i))>(renderSquare(square, i))</span>,
                 row
               )
             ))
@@ -102,9 +106,6 @@ let make = (~greeting, _children) => {
       <h1>(ReasonReact.string(greeting))</h1>
       <h2>(ReasonReact.string(message))</h2>
       <div>(ReasonReact.array(rows ))</div>
-      <button onClick=(_event => self.send(Click(0)))>
-        (ReasonReact.string(message))
-      </button>
     </div>;
   },
 };
