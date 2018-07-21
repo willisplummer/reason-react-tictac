@@ -38,7 +38,7 @@ let id(i, a) = (i, a);
 let zipWithIndices(arr: array('a)): array((int, 'a)) = ArrayLabels.mapi(~f=id, arr);
 
 let arrToMatrix = (arr: array(square)): array(array(square)) => {
-  let init: array(array(square)) = ArrayLabels.make_matrix(3, 3, None);
+  let init: array(array(square)) = ArrayLabels.make_matrix(~dimx=3, ~dimy=3, None);
   let zipped : array((int, 'a)) = zipWithIndices(arr);
   let f = (acc, zippedVal): array(array('a)) => {
     let (index, a) = zippedVal;
@@ -85,12 +85,12 @@ let make = (~greeting, _children) => {
       };
     let matrix = arrToMatrix(self.state.board);
     let rows = ArrayLabels.mapi(
-      (i, row) =>
+      ~f=(i, row) =>
         <div key=("row-key-" ++ string_of_int(i))>
           <div>
             (ReasonReact.array(
               ArrayLabels.mapi(
-                (i, square) => <span key=("square-key-" ++ string_of_int(i))>(renderSquare(square, i))</span>,
+                ~f=(i, square) => <span key=("square-key-" ++ string_of_int(i))>(renderSquare(square, i))</span>,
                 row
               )
             ))
