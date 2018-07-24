@@ -128,18 +128,18 @@ function isAWinner(list) {
 }
 
 function updateWinner(currentBoard) {
-  var results = ListLabels.map((function (combo) {
-          return ListLabels.map((function (i) {
-                        return Caml_array.caml_array_get(currentBoard, i);
-                      }), combo);
-        }), winningCombos);
-  var filtered = ListLabels.filter((function (vals) {
-            return !ListLabels.exists(isNone, vals);
-          }))(results);
-  var winners = ListLabels.filter(isSome)(ListLabels.map(isAWinner, filtered));
-  var match = ListLabels.length(winners) > 0;
+  var winner = ListLabels.filter(isSome)(ListLabels.map((function (combo) {
+              return ListLabels.fold_right((function (index, init) {
+                            var match = !isNone(Caml_array.caml_array_get(currentBoard, index)) && Caml_array.caml_array_get(currentBoard, index) === init;
+                            if (match) {
+                              return init;
+                            }
+                            
+                          }), combo, Caml_array.caml_array_get(currentBoard, ListLabels.hd(combo)));
+            }), winningCombos));
+  var match = ListLabels.length(winner) > 0;
   if (match) {
-    return ListLabels.hd(winners);
+    return ListLabels.hd(winner);
   }
   
 }
@@ -206,9 +206,12 @@ function make(greeting, _) {
           /* willUpdate */component[/* willUpdate */7],
           /* shouldUpdate */component[/* shouldUpdate */8],
           /* render */(function (self) {
-              var message = "It's " + ((
-                  self[/* state */1][/* turn */0] ? "O" : "X"
-                ) + "'s turn");
+              var match = self[/* state */1][/* winner */1];
+              var message = match !== undefined ? (
+                  match ? "O" : "X"
+                ) + " wins!" : "It's " + ((
+                    self[/* state */1][/* turn */0] ? "O" : "X"
+                  ) + "'s turn");
               var renderSquare = function (square, index) {
                 if (square !== undefined) {
                   return React.createElement("span", undefined, square ? "O" : "X");
@@ -222,10 +225,6 @@ function make(greeting, _) {
                 }
               };
               var matrix = arrToMatrix(self[/* state */1][/* board */2]);
-              var match = self[/* state */1][/* winner */1];
-              var winnerMessage = match !== undefined ? (
-                  match ? "O" : "X"
-                ) + " wins!" : "Keep playing!";
               var rows = ArrayLabels.mapi((function (i, row) {
                       return React.createElement("div", {
                                   key: "row-key-" + String(i)
@@ -236,7 +235,7 @@ function make(greeting, _) {
                                                       }, renderSquare(param[1], i));
                                           }), row)));
                     }), matrix);
-              return React.createElement("div", undefined, React.createElement("h1", undefined, greeting), React.createElement("h2", undefined, message), React.createElement("div", undefined, rows), React.createElement("div", undefined, winnerMessage));
+              return React.createElement("div", undefined, React.createElement("h1", undefined, greeting), React.createElement("h2", undefined, message), React.createElement("div", undefined, rows));
             }),
           /* initialState */(function () {
               return /* record */[

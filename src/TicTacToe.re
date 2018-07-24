@@ -38,29 +38,23 @@ let isAWinner = (list: list(square)): square =>
   );
 
 let updateWinner = (currentBoard: gameBoard): winner => {
-  let results = ListLabels.map(
-    ~f=(combo) => {
-      ListLabels.map(
-        ~f=(i) => {currentBoard[i]},
+  let winner: list(square) = ListLabels.map(
+    ~f=(combo: list(int)) => {
+      ListLabels.fold_right(
+        ~f=(index: int, init: square) => {
+          isSome(currentBoard[index]) && currentBoard[index] === init ? init : None
+        },
+        ~init=currentBoard[ListLabels.hd(combo)],
         combo
       )
     },
     winningCombos
+  )
+  |> ListLabels.filter(
+    ~f=isSome
   );
-  let filtered = ListLabels.filter(
-    ~f=(vals) => {
-      !ListLabels.exists(~f=isNone, vals)
-    },
-    results
-  );
-  let winners = ListLabels.filter(
-    ~f=isSome,
-    ListLabels.map(
-      ~f=isAWinner,
-      filtered
-    )
-  );
-  ListLabels.length(winners) > 0 ? ListLabels.hd(winners) : None
+
+  ListLabels.length(winner) > 0 ? ListLabels.hd(winner) : None
 };
 
 let updateBoard = (currentBoard: gameBoard, player: player, squareIndex: int): gameBoard => {
@@ -127,7 +121,10 @@ let make = (~greeting, _children) => {
 
   render: self => {
     let message =
-      "It's " ++ playerToString(self.state.turn) ++ "'s turn";
+      switch (self.state.winner) {
+        | None => "It's " ++ playerToString(self.state.turn) ++ "'s turn";
+        | Some(player) => playerToString(player) ++ " wins!"
+      }
     let renderSquare(square: square, index: int): ReasonReact.reactElement =
       switch (square) {
         | None =>
@@ -137,11 +134,6 @@ let make = (~greeting, _children) => {
         | Some(player) => <span>(ReasonReact.string(playerToString(player)))</span>
       };
     let matrix = arrToMatrix(self.state.board);
-    let winnerMessage =
-      switch (self.state.winner) {
-        | None => "Keep playing!"
-        | Some(player) => playerToString(player) ++ " wins!"
-      };
     let rows = ArrayLabels.mapi(
       ~f=(i, row) =>
         <div key=("row-key-" ++ string_of_int(i))>
@@ -160,7 +152,6 @@ let make = (~greeting, _children) => {
       <h1>(ReasonReact.string(greeting))</h1>
       <h2>(ReasonReact.string(message))</h2>
       <div>(ReasonReact.array(rows))</div>
-      <div>(ReasonReact.string(winnerMessage))</div>
     </div>;
   },
 };
