@@ -127,21 +127,22 @@ function isAWinner(list) {
               }), ListLabels.hd(list), list);
 }
 
-function updateWinner(currentBoard) {
-  var results = ListLabels.map((function (combo) {
-          return ListLabels.map((function (i) {
-                        return Caml_array.caml_array_get(currentBoard, i);
-                      }), combo);
-        }), winningCombos);
-  var filtered = ListLabels.filter((function (vals) {
-            return !ListLabels.exists(isNone, vals);
-          }))(results);
-  var winners = ListLabels.filter(isSome)(ListLabels.map(isAWinner, filtered));
-  var match = ListLabels.length(winners) > 0;
+function safeHd(xs) {
+  var match = ListLabels.length(xs) > 0;
   if (match) {
-    return ListLabels.hd(winners);
+    return ListLabels.hd(xs);
   }
   
+}
+
+function updateWinner(currentBoard) {
+  return safeHd(ListLabels.filter(isSome)(ListLabels.map(isAWinner, ListLabels.filter((function (vals) {
+                              return !ListLabels.exists(isNone, vals);
+                            }))(ListLabels.map((function (combo) {
+                                return ListLabels.map((function (i) {
+                                              return Caml_array.caml_array_get(currentBoard, i);
+                                            }), combo);
+                              }), winningCombos)))));
 }
 
 function updateBoard(currentBoard, player, squareIndex) {
@@ -193,6 +194,47 @@ function arrToMatrix(arr) {
 }
 
 var component = ReasonReact.reducerComponent("Example");
+
+function availableMoves(board) {
+  var zipped = ArrayLabels.mapi(id, board);
+  var zippedList = ArrayLabels.to_list(zipped);
+  var filteredZippedList = ListLabels.filter((function (param) {
+            return !isNone(param[1]);
+          }))(zippedList);
+  return ListLabels.map((function (param) {
+                return param[0];
+              }), filteredZippedList);
+}
+
+function predictFuture(board, turn) {
+  var moves = availableMoves(board);
+  return ListLabels.map((function (idx) {
+                return /* tuple */[
+                        idx,
+                        updateBoard(board, turn, idx)
+                      ];
+              }), moves);
+}
+
+function chooseComputerMove(board) {
+  var futures = predictFuture(board, /* O */1);
+  var winnersWithIndices = ListLabels.map((function (param) {
+          return /* tuple */[
+                  param[0],
+                  updateWinner(param[1])
+                ];
+        }), futures);
+  ListLabels.filter((function (param) {
+            return param[1] === /* O */1;
+          }))(winnersWithIndices);
+  ListLabels.filter((function (param) {
+            return param[1] === /* X */0;
+          }))(winnersWithIndices);
+  ListLabels.filter((function (param) {
+            return param[1] === undefined;
+          }))(winnersWithIndices);
+  return ListLabels.hd(winnersWithIndices)[0];
+}
 
 function make(greeting, _) {
   return /* record */[
@@ -267,6 +309,7 @@ exports.isNone = isNone;
 exports.isSome = isSome;
 exports.winningCombos = winningCombos;
 exports.isAWinner = isAWinner;
+exports.safeHd = safeHd;
 exports.updateWinner = updateWinner;
 exports.updateBoard = updateBoard;
 exports.switchPlayer = switchPlayer;
@@ -275,5 +318,8 @@ exports.id = id;
 exports.zipWithIndices = zipWithIndices;
 exports.arrToMatrix = arrToMatrix;
 exports.component = component;
+exports.availableMoves = availableMoves;
+exports.predictFuture = predictFuture;
+exports.chooseComputerMove = chooseComputerMove;
 exports.make = make;
 /* component Not a pure module */

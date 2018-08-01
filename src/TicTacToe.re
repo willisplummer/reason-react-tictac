@@ -37,8 +37,12 @@ let isAWinner = (list: list(square)): square =>
     list
   );
 
-let updateWinner = (currentBoard: gameBoard): winner => {
-  let results = ListLabels.map(
+let safeHd = (xs) => ListLabels.length(xs) > 0 ? ListLabels.hd(xs) : None
+
+let updateWinner = (currentBoard: gameBoard): winner =>
+  /* reverse composition */
+  /* (ListLabels.map <<< ListLabels.map(~f=(i) => {currentBoard[i]}))(winningCombos) */
+  ListLabels.map(
     ~f=(combo) => {
       ListLabels.map(
         ~f=(i) => {currentBoard[i]},
@@ -46,22 +50,15 @@ let updateWinner = (currentBoard: gameBoard): winner => {
       )
     },
     winningCombos
-  );
-  let filtered = ListLabels.filter(
+  )
+  |> ListLabels.filter(
     ~f=(vals) => {
       !ListLabels.exists(~f=isNone, vals)
-    },
-    results
-  );
-  let winners = ListLabels.filter(
-    ~f=isSome,
-    ListLabels.map(
-      ~f=isAWinner,
-      filtered
-    )
-  );
-  ListLabels.length(winners) > 0 ? ListLabels.hd(winners) : None
-};
+    }
+  )
+  |> ListLabels.map(~f=isAWinner)
+  |> ListLabels.filter(~f=isSome)
+  |> safeHd
 
 let updateBoard = (currentBoard: gameBoard, player: player, squareIndex: int): gameBoard => {
   currentBoard[squareIndex] = Some(player);
@@ -101,6 +98,28 @@ let arrToMatrix = (arr: array(square)): array(array((int, 'a))) => {
    Needs to be **after** state and action declarations! */
 let component = ReasonReact.reducerComponent("Example");
 
+let availableMoves = (board: gameBoard): list(int) => {
+  let zipped: array((int, square)) = zipWithIndices(board);
+  let zippedList = ArrayLabels.to_list(zipped);
+  let filteredZippedList = ListLabels.filter(~f=((_idx, square)) => isSome(square), zippedList);
+  ListLabels.map(~f=((idx, _square)) => idx, filteredZippedList)
+}
+
+let predictFuture = (board: gameBoard, turn: player): list((int, gameBoard)) => {
+  let moves = availableMoves(board);
+  ListLabels.map(~f=(idx) => (idx, updateBoard(board, turn, idx)), moves)
+}
+
+let chooseComputerMove = (board: gameBoard): int => {
+  let futures = predictFuture(board, O);
+  /* debug this line lol */
+  let winnersWithIndices = ListLabels.map(~f=((idx, futureBoard)) => (idx, updateWinner(futureBoard)), futures);
+  let compWinners = ListLabels.filter(~f=((idx, winner)) => winner === Some(O), winnersWithIndices);
+  let playerWinners = ListLabels.filter(~f=((idx, winner)) => winner === Some(X), winnersWithIndices);
+  let noWinners = ListLabels.filter(~f=((_idx, winner)) => winner === None, winnersWithIndices);
+  let (idx, _winner) = ListLabels.hd(winnersWithIndices);
+  idx
+}
 
 /* greeting and children are props. `children` isn't used, therefore ignored.
 We ignore it by prepending it with an underscore */
