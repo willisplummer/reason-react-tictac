@@ -125,6 +125,7 @@ let optionFlatMap = (f: 'a => 'b, opt: option('a)): 'b =>
     | None => None
   };
 
+/* TODO: Think one move farther ahead to figure out how the player can win on their turn */
 let chooseComputerMove = (board: gameBoard): int => {
   let availableMoves = 
     predictFuture(board, O)
