@@ -8,6 +8,7 @@ var Caml_array = require("bs-platform/lib/js/caml_array.js");
 var ListLabels = require("bs-platform/lib/js/listLabels.js");
 var ArrayLabels = require("bs-platform/lib/js/arrayLabels.js");
 var ReasonReact = require("reason-react/src/ReasonReact.js");
+var Js_primitive = require("bs-platform/lib/js/js_primitive.js");
 
 var initialBoard = Caml_array.caml_make_vect(9, undefined);
 
@@ -127,26 +128,38 @@ function isAWinner(list) {
               }), ListLabels.hd(list), list);
 }
 
-function updateWinner(currentBoard) {
-  var winner = ListLabels.filter(isSome)(ListLabels.map((function (combo) {
-              return ListLabels.fold_right((function (index, init) {
-                            var match = !isNone(Caml_array.caml_array_get(currentBoard, index)) && Caml_array.caml_array_get(currentBoard, index) === init;
-                            if (match) {
-                              return init;
-                            }
-                            
-                          }), combo, Caml_array.caml_array_get(currentBoard, ListLabels.hd(combo)));
-            }), winningCombos));
-  var match = ListLabels.length(winner) > 0;
+function safeHd(xs) {
+  var match = ListLabels.length(xs) > 0;
   if (match) {
-    return ListLabels.hd(winner);
+    return Js_primitive.some(ListLabels.hd(xs));
   }
   
 }
 
+function getOrElse($$default, opt) {
+  if (opt !== undefined) {
+    return Js_primitive.valFromOption(opt);
+  } else {
+    return $$default;
+  }
+}
+
+function updateWinner(currentBoard) {
+  return getOrElse(undefined, safeHd(ListLabels.filter(isSome)(ListLabels.map((function (combo) {
+                            return ListLabels.fold_right((function (index, init) {
+                                          var match = !isNone(Caml_array.caml_array_get(currentBoard, index)) && Caml_array.caml_array_get(currentBoard, index) === init;
+                                          if (match) {
+                                            return init;
+                                          }
+                                          
+                                        }), combo, Caml_array.caml_array_get(currentBoard, ListLabels.hd(combo)));
+                          }), winningCombos))));
+}
+
 function updateBoard(currentBoard, player, squareIndex) {
-  Caml_array.caml_array_set(currentBoard, squareIndex, player);
-  return currentBoard;
+  var copy = ArrayLabels.copy(currentBoard);
+  Caml_array.caml_array_set(copy, squareIndex, player);
+  return copy;
 }
 
 function switchPlayer(currentPlayer) {
@@ -193,6 +206,77 @@ function arrToMatrix(arr) {
 }
 
 var component = ReasonReact.reducerComponent("Example");
+
+function availableMoves(board) {
+  var zipped = ArrayLabels.mapi(id, board);
+  var zippedList = ArrayLabels.to_list(zipped);
+  var filteredZippedList = ListLabels.filter((function (param) {
+            return isNone(param[1]);
+          }))(zippedList);
+  return ListLabels.map((function (prim) {
+                return prim[0];
+              }), filteredZippedList);
+}
+
+function predictFuture(board, turn) {
+  var moves = availableMoves(board);
+  return ListLabels.map((function (idx) {
+                return /* tuple */[
+                        idx,
+                        updateBoard(board, turn, idx)
+                      ];
+              }), moves);
+}
+
+function optionMap(f, opt) {
+  if (opt !== undefined) {
+    return Js_primitive.some(Curry._1(f, Js_primitive.valFromOption(opt)));
+  }
+  
+}
+
+function optionFlatMap(f, opt) {
+  if (opt !== undefined) {
+    return Curry._1(f, Js_primitive.valFromOption(opt));
+  }
+  
+}
+
+function chooseComputerMove(board) {
+  var availableWinnersWithIndices = ListLabels.filter((function (param) {
+            return ListLabels.mem(param[0], availableMoves(board));
+          }))(ListLabels.map((function (param) {
+              return /* tuple */[
+                      param[0],
+                      updateWinner(param[1])
+                    ];
+            }), predictFuture(board, /* O */1)));
+  var compWinners = ListLabels.filter((function (param) {
+            return param[1] === /* O */1;
+          }))(availableWinnersWithIndices);
+  var playerWinners = ListLabels.filter((function (param) {
+            return param[1] === /* X */0;
+          }))(availableWinnersWithIndices);
+  var noWinners = ListLabels.filter((function (param) {
+            return param[1] === undefined;
+          }))(availableWinnersWithIndices);
+  return getOrElse(1, optionFlatMap((function (a) {
+                    return a;
+                  }), safeHd(ListLabels.map((function (param) {
+                            return optionMap((function (prim) {
+                                          return prim[0];
+                                        }), param);
+                          }), ListLabels.filter(isSome)(/* :: */[
+                              safeHd(compWinners),
+                              /* :: */[
+                                safeHd(playerWinners),
+                                /* :: */[
+                                  safeHd(noWinners),
+                                  /* [] */0
+                                ]
+                              ]
+                            ])))));
+}
 
 function make(greeting, _) {
   return /* record */[
@@ -247,12 +331,16 @@ function make(greeting, _) {
           /* retainedProps */component[/* retainedProps */11],
           /* reducer */(function (action, state) {
               var newBoard = updateBoard(state[/* board */2], state[/* turn */0], action[0]);
-              var newState_000 = /* turn */state[/* turn */0] ? /* X */0 : /* O */1;
-              var newState_001 = /* winner */updateWinner(newBoard);
+              var compMove = chooseComputerMove(newBoard);
+              var postComputerBoard = updateBoard(newBoard, /* O */1, compMove);
+              var winnerAfterPlayer = updateWinner(newBoard);
+              var winnerAfterComp = updateWinner(postComputerBoard);
+              var match = !isNone(winnerAfterPlayer);
+              var winner = match ? winnerAfterPlayer : winnerAfterComp;
               var newState = /* record */[
-                newState_000,
-                newState_001,
-                /* board */newBoard
+                /* turn : X */0,
+                /* winner */winner,
+                /* board */postComputerBoard
               ];
               return /* Update */Block.__(0, [newState]);
             }),
@@ -266,6 +354,8 @@ exports.isNone = isNone;
 exports.isSome = isSome;
 exports.winningCombos = winningCombos;
 exports.isAWinner = isAWinner;
+exports.safeHd = safeHd;
+exports.getOrElse = getOrElse;
 exports.updateWinner = updateWinner;
 exports.updateBoard = updateBoard;
 exports.switchPlayer = switchPlayer;
@@ -274,5 +364,10 @@ exports.id = id;
 exports.zipWithIndices = zipWithIndices;
 exports.arrToMatrix = arrToMatrix;
 exports.component = component;
+exports.availableMoves = availableMoves;
+exports.predictFuture = predictFuture;
+exports.optionMap = optionMap;
+exports.optionFlatMap = optionFlatMap;
+exports.chooseComputerMove = chooseComputerMove;
 exports.make = make;
 /* component Not a pure module */

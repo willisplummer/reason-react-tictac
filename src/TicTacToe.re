@@ -37,8 +37,16 @@ let isAWinner = (list: list(square)): square =>
     list
   );
 
-let updateWinner = (currentBoard: gameBoard): winner => {
-  let winner: list(square) = ListLabels.map(
+let safeHd = (xs: list('a)): option('a) => ListLabels.length(xs) > 0 ? Some(ListLabels.hd(xs)) : None
+
+let getOrElse = (default: 'a, opt: option('a)): 'a =>
+  switch (opt) {
+    | Some(a) => a
+    | None => default
+  };
+
+let updateWinner = (currentBoard: gameBoard): winner =>
+  ListLabels.map(
     ~f=(combo: list(int)) => {
       ListLabels.fold_right(
         ~f=(index: int, init: square) => {
@@ -50,16 +58,14 @@ let updateWinner = (currentBoard: gameBoard): winner => {
     },
     winningCombos
   )
-  |> ListLabels.filter(
-    ~f=isSome
-  );
-
-  ListLabels.length(winner) > 0 ? ListLabels.hd(winner) : None
-};
+  |> ListLabels.filter(~f=isSome)
+  |> safeHd
+  |> getOrElse(None)
 
 let updateBoard = (currentBoard: gameBoard, player: player, squareIndex: int): gameBoard => {
-  currentBoard[squareIndex] = Some(player);
-  currentBoard
+  let copy = ArrayLabels.copy(currentBoard);
+  copy[squareIndex] = Some(player);
+  copy
 };
 
 let switchPlayer(currentPlayer: player): player =
@@ -95,6 +101,45 @@ let arrToMatrix = (arr: array(square)): array(array((int, 'a))) => {
    Needs to be **after** state and action declarations! */
 let component = ReasonReact.reducerComponent("Example");
 
+let availableMoves = (board: gameBoard): list(int) => {
+  let zipped: array((int, square)) = zipWithIndices(board);
+  let zippedList = ArrayLabels.to_list(zipped);
+  let filteredZippedList = ListLabels.filter(~f=((_idx, square)) => isNone(square), zippedList);
+  ListLabels.map(~f=Pervasives.fst, filteredZippedList)
+}
+
+let predictFuture = (board: gameBoard, turn: player): list((int, gameBoard)) => {
+  let moves = availableMoves(board);
+  ListLabels.map(~f=(idx) => (idx, updateBoard(board, turn, idx)), moves)
+}
+
+let optionMap = (f: 'a => 'b, opt: option('a)): option('b) =>
+  switch(opt) {
+    | Some(a) => Some(f(a))
+    | None => None
+  };
+
+let optionFlatMap = (f: 'a => 'b, opt: option('a)): 'b =>
+  switch(opt) {
+    | Some(a) => f(a)
+    | None => None
+  };
+
+let chooseComputerMove = (board: gameBoard): int => {
+  let availableWinnersWithIndices = 
+    predictFuture(board, O)
+    |> ListLabels.map(~f=((idx, futureBoard)) => (idx, updateWinner(futureBoard)))
+    |> ListLabels.filter(~f=(((idx, _future) )=> ListLabels.mem(idx, availableMoves(board))));
+  let compWinners = ListLabels.filter(~f=((_idx, winner)) => winner === Some(O), availableWinnersWithIndices);
+  let playerWinners = ListLabels.filter(~f=((_idx, winner)) => winner === Some(X), availableWinnersWithIndices);
+  let noWinners = ListLabels.filter(~f=((_idx, winner)) => winner === None, availableWinnersWithIndices);
+
+  ListLabels.filter(~f=isSome, [safeHd(compWinners), safeHd(playerWinners), safeHd(noWinners)])
+  |> ListLabels.map(~f=optionMap(Pervasives.fst))
+  |> safeHd
+  |> optionFlatMap(a => a)
+  |> getOrElse(1)
+}
 
 /* greeting and children are props. `children` isn't used, therefore ignored.
 We ignore it by prepending it with an underscore */
@@ -109,10 +154,15 @@ let make = (~greeting, _children) => {
     switch (action) {
     | Click(squareIndex) => {
       let newBoard = updateBoard(state.board, state.turn, squareIndex);
+      let compMove = chooseComputerMove(newBoard);
+      let postComputerBoard = updateBoard(newBoard, O, compMove);
+      let winnerAfterPlayer = updateWinner(newBoard);
+      let winnerAfterComp = updateWinner(postComputerBoard);
+      let winner = isSome(winnerAfterPlayer) ? winnerAfterPlayer : winnerAfterComp;
       let newState = {
-        board: newBoard,
-        turn: switchPlayer(state.turn),
-        winner: updateWinner(newBoard),
+        board: postComputerBoard,
+        turn: X,
+        winner: winner,
       };
 
       ReasonReact.Update(newState)
@@ -155,11 +205,3 @@ let make = (~greeting, _children) => {
     </div>;
   },
 };
-
-/* TODO:
-- X Check for a winner
-- Check for a tie
-- Calculate all possible moves
-- Make computer select random move and play as O's
-- Start/Finish gamestate
-- Styling */
