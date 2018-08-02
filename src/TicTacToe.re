@@ -126,13 +126,23 @@ let optionFlatMap = (f: 'a => 'b, opt: option('a)): 'b =>
   };
 
 let chooseComputerMove = (board: gameBoard): int => {
-  let availableWinnersWithIndices = 
+  let availableMoves = 
     predictFuture(board, O)
     |> ListLabels.map(~f=((idx, futureBoard)) => (idx, updateWinner(futureBoard)))
-    |> ListLabels.filter(~f=(((idx, _future) )=> ListLabels.mem(idx, availableMoves(board))));
-  let compWinners = ListLabels.filter(~f=((_idx, winner)) => winner === Some(O), availableWinnersWithIndices);
-  let playerWinners = ListLabels.filter(~f=((_idx, winner)) => winner === Some(X), availableWinnersWithIndices);
-  let noWinners = ListLabels.filter(~f=((_idx, winner)) => winner === None, availableWinnersWithIndices);
+    |> ListLabels.filter(~f=(((idx, _future) )=> ListLabels.mem(idx, ~set=availableMoves(board))));
+  let compWinners = ListLabels.filter(~f=((_idx, winner)) => winner === Some(O), availableMoves);
+  let playerWinners = ListLabels.filter(~f=((_idx, winner)) => winner === Some(X), availableMoves);
+  let noWinners = ListLabels.filter(~f=((_idx, winner)) => winner === None, availableMoves);
+
+  let getIdxs = input => ArrayLabels.of_list(
+    ListLabels.map(
+      ~f=Pervasives.fst,
+      input)
+    );
+  Js.log(getIdxs(availableMoves));
+  Js.log(getIdxs(compWinners));
+  Js.log(getIdxs(playerWinners));
+  Js.log(getIdxs(noWinners));
 
   ListLabels.filter(~f=isSome, [safeHd(compWinners), safeHd(playerWinners), safeHd(noWinners)])
   |> ListLabels.map(~f=optionMap(Pervasives.fst))
@@ -153,14 +163,15 @@ let make = (~greeting, _children) => {
   reducer: (action, state) =>
     switch (action) {
     | Click(squareIndex) => {
-      let newBoard = updateBoard(state.board, state.turn, squareIndex);
-      let compMove = chooseComputerMove(newBoard);
-      let postComputerBoard = updateBoard(newBoard, O, compMove);
-      let winnerAfterPlayer = updateWinner(newBoard);
-      let winnerAfterComp = updateWinner(postComputerBoard);
+      let boardAfterPlayer = updateBoard(state.board, state.turn, squareIndex);
+      let boardAfterComputer = updateBoard(boardAfterPlayer, O, chooseComputerMove(boardAfterPlayer));
+
+      let winnerAfterPlayer = updateWinner(boardAfterPlayer);
+      let winnerAfterComp = updateWinner(boardAfterComputer);
       let winner = isSome(winnerAfterPlayer) ? winnerAfterPlayer : winnerAfterComp;
+
       let newState = {
-        board: postComputerBoard,
+        board: isSome(winnerAfterPlayer) ? boardAfterPlayer : boardAfterComputer,
         turn: X,
         winner: winner,
       };

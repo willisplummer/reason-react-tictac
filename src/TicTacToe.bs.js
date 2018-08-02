@@ -243,7 +243,7 @@ function optionFlatMap(f, opt) {
 }
 
 function chooseComputerMove(board) {
-  var availableWinnersWithIndices = ListLabels.filter((function (param) {
+  var availableMoves$1 = ListLabels.filter((function (param) {
             return ListLabels.mem(param[0], availableMoves(board));
           }))(ListLabels.map((function (param) {
               return /* tuple */[
@@ -253,13 +253,22 @@ function chooseComputerMove(board) {
             }), predictFuture(board, /* O */1)));
   var compWinners = ListLabels.filter((function (param) {
             return param[1] === /* O */1;
-          }))(availableWinnersWithIndices);
+          }))(availableMoves$1);
   var playerWinners = ListLabels.filter((function (param) {
             return param[1] === /* X */0;
-          }))(availableWinnersWithIndices);
+          }))(availableMoves$1);
   var noWinners = ListLabels.filter((function (param) {
             return param[1] === undefined;
-          }))(availableWinnersWithIndices);
+          }))(availableMoves$1);
+  var getIdxs = function (input) {
+    return ArrayLabels.of_list(ListLabels.map((function (prim) {
+                      return prim[0];
+                    }), input));
+  };
+  console.log(getIdxs(availableMoves$1));
+  console.log(getIdxs(compWinners));
+  console.log(getIdxs(playerWinners));
+  console.log(getIdxs(noWinners));
   return getOrElse(1, optionFlatMap((function (a) {
                     return a;
                   }), safeHd(ListLabels.map((function (param) {
@@ -330,17 +339,18 @@ function make(greeting, _) {
             }),
           /* retainedProps */component[/* retainedProps */11],
           /* reducer */(function (action, state) {
-              var newBoard = updateBoard(state[/* board */2], state[/* turn */0], action[0]);
-              var compMove = chooseComputerMove(newBoard);
-              var postComputerBoard = updateBoard(newBoard, /* O */1, compMove);
-              var winnerAfterPlayer = updateWinner(newBoard);
-              var winnerAfterComp = updateWinner(postComputerBoard);
+              var boardAfterPlayer = updateBoard(state[/* board */2], state[/* turn */0], action[0]);
+              var boardAfterComputer = updateBoard(boardAfterPlayer, /* O */1, chooseComputerMove(boardAfterPlayer));
+              var winnerAfterPlayer = updateWinner(boardAfterPlayer);
+              var winnerAfterComp = updateWinner(boardAfterComputer);
               var match = !isNone(winnerAfterPlayer);
               var winner = match ? winnerAfterPlayer : winnerAfterComp;
+              var match$1 = !isNone(winnerAfterPlayer);
+              var newState_002 = /* board */match$1 ? boardAfterPlayer : boardAfterComputer;
               var newState = /* record */[
                 /* turn : X */0,
                 /* winner */winner,
-                /* board */postComputerBoard
+                newState_002
               ];
               return /* Update */Block.__(0, [newState]);
             }),
