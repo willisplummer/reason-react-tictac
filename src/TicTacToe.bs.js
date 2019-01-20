@@ -242,23 +242,59 @@ function optionFlatMap(f, opt) {
   
 }
 
+function prioritizeWinners(winners) {
+  return ListLabels.fold_left((function (init, b) {
+                if (init !== undefined) {
+                  var acc = init;
+                  if (b !== undefined) {
+                    var match = acc === /* X */0 || b === /* X */0;
+                    if (match) {
+                      return /* X */0;
+                    } else {
+                      return /* O */1;
+                    }
+                  } else {
+                    return acc;
+                  }
+                } else if (b !== undefined) {
+                  return b;
+                } else {
+                  return undefined;
+                }
+              }), undefined, winners);
+}
+
 function chooseComputerMove(board) {
   var futureBoards = predictFuture(board, /* O */1);
-  var winnersAfterPossibleComputerMoves = ListLabels.map((function (param) {
+  var futureBoardsAfterPlayer = ListLabels.map((function (param) {
           return /* tuple */[
                   param[0],
-                  updateWinner(param[1])
+                  predictFuture(param[1], /* X */0)
                 ];
         }), futureBoards);
+  var winnerFuturesAfterPlayerMoves = ListLabels.map((function (param) {
+          return /* tuple */[
+                  param[0],
+                  ListLabels.map((function (param) {
+                          return updateWinner(param[1]);
+                        }), param[1])
+                ];
+        }), futureBoardsAfterPlayer);
+  var winnersAfterPossiblePlayerMoves = ListLabels.map((function (param) {
+          return /* tuple */[
+                  param[0],
+                  prioritizeWinners(param[1])
+                ];
+        }), winnerFuturesAfterPlayerMoves);
   var compWinners = ListLabels.filter((function (param) {
             return param[1] === /* O */1;
-          }))(winnersAfterPossibleComputerMoves);
-  var playerWinners = ListLabels.filter((function (param) {
-            return param[1] === /* X */0;
-          }))(winnersAfterPossibleComputerMoves);
+          }))(winnersAfterPossiblePlayerMoves);
   var noWinners = ListLabels.filter((function (param) {
             return param[1] === undefined;
-          }))(winnersAfterPossibleComputerMoves);
+          }))(winnersAfterPossiblePlayerMoves);
+  var playerWinners = ListLabels.filter((function (param) {
+            return param[1] === /* X */0;
+          }))(winnersAfterPossiblePlayerMoves);
   return getOrElse(1, optionFlatMap((function (a) {
                     return a;
                   }), safeHd(ListLabels.map((function (param) {
@@ -268,9 +304,9 @@ function chooseComputerMove(board) {
                           }), ListLabels.filter(isSome)(/* :: */[
                               safeHd(compWinners),
                               /* :: */[
-                                safeHd(playerWinners),
+                                safeHd(noWinners),
                                 /* :: */[
-                                  safeHd(noWinners),
+                                  safeHd(playerWinners),
                                   /* [] */0
                                 ]
                               ]
@@ -368,6 +404,7 @@ exports.availableMoves = availableMoves;
 exports.predictFuture = predictFuture;
 exports.optionMap = optionMap;
 exports.optionFlatMap = optionFlatMap;
+exports.prioritizeWinners = prioritizeWinners;
 exports.chooseComputerMove = chooseComputerMove;
 exports.make = make;
 /* component Not a pure module */

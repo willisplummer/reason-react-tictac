@@ -125,17 +125,36 @@ let optionFlatMap = (f: 'a => 'b, opt: option('a)): 'b =>
     | None => None
   };
 
-/* TODO: Think one move farther ahead to figure out how the player can win on their turn */
-let chooseComputerMove = (board: gameBoard): int => {
-  let futureBoards = predictFuture(board, O)
-  let winnersAfterPossibleComputerMoves =
-    futureBoards
-    |> ListLabels.map(~f=((idx, futureBoard)) => (idx, updateWinner(futureBoard)))
-  let compWinners = ListLabels.filter(~f=((_idx, winner)) => winner === Some(O), winnersAfterPossibleComputerMoves);
-  let playerWinners = ListLabels.filter(~f=((_idx, winner)) => winner === Some(X), winnersAfterPossibleComputerMoves);
-  let noWinners = ListLabels.filter(~f=((_idx, winner)) => winner === None, winnersAfterPossibleComputerMoves);
+let prioritizeWinners = (winners: list(winner)): winner =>
+  ListLabels.fold_left(
+    ~f=(init: winner, (b): (winner)): winner => {
+      switch(init, b) {
+      | (Some(acc), None) => Some(acc)
+      | (None, Some(v)) => Some(v)
+      | (Some(acc), Some(v)) => (acc === X || v === X) ? Some(X) : Some(O)
+      | (None, None) => None
+      }
+    },
+    ~init=None,
+    winners
+  );
 
-  ListLabels.filter(~f=isSome, [safeHd(compWinners), safeHd(playerWinners), safeHd(noWinners)])
+let chooseComputerMove = (board: gameBoard): int => {
+  let futureBoards: list((int, gameBoard)) = predictFuture(board, O)
+  let futureBoardsAfterPlayer: list((int, list((int, gameBoard)))) =
+    futureBoards
+    |> ListLabels.map(~f=((idx, futureBoard)) => (idx, predictFuture(futureBoard, X)));
+  let winnerFuturesAfterPlayerMoves: list((int, list((winner)))) =
+    futureBoardsAfterPlayer
+    |> ListLabels.map(~f=((idx, futureBoards)) => (idx, ListLabels.map(~f=((_idx, board)) => updateWinner(board), futureBoards)));
+  let winnersAfterPossiblePlayerMoves: list((int, winner)) =
+    winnerFuturesAfterPlayerMoves
+    |> ListLabels.map(~f=((idx, winners)) => (idx, prioritizeWinners(winners)));
+  let compWinners = ListLabels.filter(~f=((_idx, winner)) => winner === Some(O), winnersAfterPossiblePlayerMoves);
+  let noWinners = ListLabels.filter(~f=((_idx, winner)) => winner === None, winnersAfterPossiblePlayerMoves);
+  let playerWinners = ListLabels.filter(~f=((_idx, winner)) => winner === Some(X), winnersAfterPossiblePlayerMoves);
+
+  ListLabels.filter(~f=isSome, [safeHd(compWinners), safeHd(noWinners), safeHd(playerWinners)])
   |> ListLabels.map(~f=optionMap(Pervasives.fst))
   |> safeHd
   |> optionFlatMap(a => a)
