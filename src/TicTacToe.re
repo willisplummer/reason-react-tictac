@@ -127,23 +127,13 @@ let optionFlatMap = (f: 'a => 'b, opt: option('a)): 'b =>
 
 /* TODO: Think one move farther ahead to figure out how the player can win on their turn */
 let chooseComputerMove = (board: gameBoard): int => {
-  let availableMoves = 
-    predictFuture(board, O)
+  let futureBoards = predictFuture(board, O)
+  let winnersAfterPossibleComputerMoves =
+    futureBoards
     |> ListLabels.map(~f=((idx, futureBoard)) => (idx, updateWinner(futureBoard)))
-    |> ListLabels.filter(~f=(((idx, _future) )=> ListLabels.mem(idx, ~set=availableMoves(board))));
-  let compWinners = ListLabels.filter(~f=((_idx, winner)) => winner === Some(O), availableMoves);
-  let playerWinners = ListLabels.filter(~f=((_idx, winner)) => winner === Some(X), availableMoves);
-  let noWinners = ListLabels.filter(~f=((_idx, winner)) => winner === None, availableMoves);
-
-  let getIdxs = input => ArrayLabels.of_list(
-    ListLabels.map(
-      ~f=Pervasives.fst,
-      input)
-    );
-  Js.log(getIdxs(availableMoves));
-  Js.log(getIdxs(compWinners));
-  Js.log(getIdxs(playerWinners));
-  Js.log(getIdxs(noWinners));
+  let compWinners = ListLabels.filter(~f=((_idx, winner)) => winner === Some(O), winnersAfterPossibleComputerMoves);
+  let playerWinners = ListLabels.filter(~f=((_idx, winner)) => winner === Some(X), winnersAfterPossibleComputerMoves);
+  let noWinners = ListLabels.filter(~f=((_idx, winner)) => winner === None, winnersAfterPossibleComputerMoves);
 
   ListLabels.filter(~f=isSome, [safeHd(compWinners), safeHd(playerWinners), safeHd(noWinners)])
   |> ListLabels.map(~f=optionMap(Pervasives.fst))

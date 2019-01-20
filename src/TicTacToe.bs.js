@@ -243,32 +243,22 @@ function optionFlatMap(f, opt) {
 }
 
 function chooseComputerMove(board) {
-  var availableMoves$1 = ListLabels.filter((function (param) {
-            return ListLabels.mem(param[0], availableMoves(board));
-          }))(ListLabels.map((function (param) {
-              return /* tuple */[
-                      param[0],
-                      updateWinner(param[1])
-                    ];
-            }), predictFuture(board, /* O */1)));
+  var futureBoards = predictFuture(board, /* O */1);
+  var winnersAfterPossibleComputerMoves = ListLabels.map((function (param) {
+          return /* tuple */[
+                  param[0],
+                  updateWinner(param[1])
+                ];
+        }), futureBoards);
   var compWinners = ListLabels.filter((function (param) {
             return param[1] === /* O */1;
-          }))(availableMoves$1);
+          }))(winnersAfterPossibleComputerMoves);
   var playerWinners = ListLabels.filter((function (param) {
             return param[1] === /* X */0;
-          }))(availableMoves$1);
+          }))(winnersAfterPossibleComputerMoves);
   var noWinners = ListLabels.filter((function (param) {
             return param[1] === undefined;
-          }))(availableMoves$1);
-  var getIdxs = function (input) {
-    return ArrayLabels.of_list(ListLabels.map((function (prim) {
-                      return prim[0];
-                    }), input));
-  };
-  console.log(getIdxs(availableMoves$1));
-  console.log(getIdxs(compWinners));
-  console.log(getIdxs(playerWinners));
-  console.log(getIdxs(noWinners));
+          }))(winnersAfterPossibleComputerMoves);
   return getOrElse(1, optionFlatMap((function (a) {
                     return a;
                   }), safeHd(ListLabels.map((function (param) {
